@@ -9,11 +9,14 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Input
+from sklearn.model_selection import GridSearchCV
+# from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+from scikeras.wrappers import KerasClassifier
 
 data_folder = "images"
 label_folder = "labels.csv"
 shape = 50
-activation = 'relu'
+# activation = 'relu'
 
 def load_data(folder, labels_file, target_size=(shape, shape)):
     # Carregar o arquivo CSV com as labels
@@ -68,64 +71,111 @@ num_classes = len(label_mapping)
 train_labels = tf.keras.utils.to_categorical(train_labels, num_classes=num_classes)
 test_labels = tf.keras.utils.to_categorical(test_labels, num_classes=num_classes)
 
-# Modelos 
-model1 = Sequential()
-model1.add(Input(shape=(shape, shape, 3)))
-model1.add(Conv2D(16, kernel_size=(3, 3), activation = activation))
-model1.add(Conv2D(32, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
-model1.add(Conv2D(32, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
-model1.add(Conv2D(32, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
-model1.add(Conv2D(32, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
-model1.add(Dropout(0.25))
-model1.add(Flatten())
-model1.add(Dense(32, activation = activation))
-model1.add(Dropout(0.5))
-model1.add(Dense(num_classes, activation='softmax'))
+# # Modelos 
+# model1 = Sequential()
+# model1.add(Input(shape=(shape, shape, 3)))
+# model1.add(Conv2D(16, kernel_size=(3, 3), activation = 'relu'))
+# model1.add(Conv2D(32, (3, 3), activation = 'relu'))
+# model1.add(MaxPooling2D(pool_size=(2, 2)))
+# model1.add(Conv2D(32, (3, 3), activation = 'relu'))
+# model1.add(MaxPooling2D(pool_size=(2, 2)))
+# model1.add(Conv2D(32, (3, 3), activation = 'relu'))
+# model1.add(MaxPooling2D(pool_size=(2, 2)))
+# model1.add(Conv2D(32, (3, 3), activation = 'relu'))
+# model1.add(MaxPooling2D(pool_size=(2, 2)))
+# model1.add(Dropout(0.25))
+# model1.add(Flatten())
+# model1.add(Dense(32, activation = 'relu'))
+# model1.add(Dropout(0.5))
+# model1.add(Dense(num_classes, activation='softmax'))
 
-# Compilar os modelos
-model1.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy']) # https://www.tensorflow.org/api_docs/python/tf/keras/losses # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+# # Compilar os modelos
+# model1.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy']) # https://www.tensorflow.org/api_docs/python/tf/keras/losses # https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
 
-# Treinar o modelo
-history1 = model1.fit(train_images, train_labels, epochs = 20, batch_size=32, validation_data = (test_images, test_labels))
+# # Treinar o modelo
+# history1 = model1.fit(train_images, train_labels, epochs = 20, batch_size=32, validation_data = (test_images, test_labels))
 
-# Avaliar o modelo nos dados de teste e treino
-results_model1_test = model1.evaluate(test_images, test_labels)
-results_model1_train = model1.evaluate(train_images, train_labels)
+def create_model(dropout_rate=0.0, optimizer='adam', activations = "relu", loss = 'categorical_crossentropy'):
+    model = Sequential()
+    model.add(Input(shape=(shape, shape, 3)))
+    model.add(Conv2D(16, kernel_size=(3, 3), activation=activations))
+    model.add(Conv2D(32, (3, 3), activation=activations))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (3, 3), activation=activations))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (3, 3), activation=activations))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (3, 3), activation=activations))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(dropout_rate))
+    model.add(Flatten())
+    model.add(Dense(32, activation=activations))
+    model.add(Dropout(dropout_rate))
+    model.add(Dense(num_classes, activation='softmax'))
+    model.compile(loss = loss, optimizer = optimizer, metrics=['accuracy'])
+    return model
 
-# Previsões nos dados de teste
-predictions = model1.predict(test_images)
+model = KerasClassifier(build_fn=create_model, verbose=0)
+param_grid = {
+    'batch_size': [16, 32, 64],
+    'activation': [
+        'elu', 'exponential', 'gelu', 'hard_sigmoid', 'hard_silu', 'hard_swish', 'leaky_relu',
+        'linear', 'log_softmax', 'mish', 'relu', 'relu6', 'selu', 'sigmoid', 'silu', 'softmax',
+        'softplus', 'softsign', 'swish', 'tanh'
+    ],
+    'epochs': [10],
+    'dropout_rate': [0.25, 0.5, 0.75],
+    'optimizer': [
+        'Adadelta', 'Adafactor', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'Ftrl', 'Lion', 'Nadam', 
+        'RMSprop', 'SGD'
+    ],
+    'loss': [
+        'KLD', 'MAE', 'MAPE', 'MSE', 'MSLE', 'binary_crossentropy', 'binary_focal_crossentropy',
+        'categorical_crossentropy', 'categorical_focal_crossentropy', 'categorical_hinge', 
+        'cosine_similarity', 'ctc', 'dice', 'hinge', 'huber', 'logcosh', 'poisson',
+        'sparse_categorical_crossentropy', 'squared_hinge', 'tversky'
+    ]
+}
+grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=-1, cv=3)
+grid_result = grid.fit(train_images, train_labels)
 
-# Converter previsões e labels para classe
-predictions_classes = np.argmax(predictions, axis=1)
-test_labels_classes = np.argmax(test_labels, axis=1)
+print("Melhor: %f usando %s" % (grid_result.best_score_, grid_result.best_params_))
 
-precision = precision_score(test_labels_classes, predictions_classes, average = 'weighted')
-recall = recall_score(test_labels_classes, predictions_classes, average = 'weighted')
 
-# Matriz de Confusão
-cm = confusion_matrix(test_labels_classes, predictions_classes)
+# # Avaliar o modelo nos dados de teste e treino
+# results_model1_test = model1.evaluate(test_images, test_labels)
+# results_model1_train = model1.evaluate(train_images, train_labels)
 
-# Calcular F1-Score e Especificidade
-def specificity(y_true, y_pred):
-    cm = confusion_matrix(y_true, y_pred)
-    tn, fp, fn, tp = cm.ravel()
-    return tn / (tn + fp)
+# # Previsões nos dados de teste
+# predictions = model1.predict(test_images)
 
-f1 = f1_score(test_labels_classes, predictions_classes, average='weighted')
-spec = specificity(test_labels_classes, predictions_classes)
+# # Converter previsões e labels para classe
+# predictions_classes = np.argmax(predictions, axis=1)
+# test_labels_classes = np.argmax(test_labels, axis=1)
 
-# Imprimir os resultados
-print("Resultados do modelo:")
-print(f"Acurácia teste: {results_model1_test[1]}")
-print(f"Acurácia treino: {results_model1_train[1]}")
-print(f"Perda teste: {results_model1_test[0]}")
-print(f"Perda treino: {results_model1_train[0]}")
-print(f"Precisão: {precision}")
-print(f"Revocação: {recall}")
-print(f'Matriz de confusão: {cm}')
-print(f'F1-Score: {f1}')
-# print(f'Especificidade: {spec}')
+# precision = precision_score(test_labels_classes, predictions_classes, average = 'weighted')
+# recall = recall_score(test_labels_classes, predictions_classes, average = 'weighted')
+
+# # Matriz de Confusão
+# cm = confusion_matrix(test_labels_classes, predictions_classes)
+
+# # # Calcular F1-Score e Especificidade
+# # def specificity(y_true, y_pred):
+# #     cm = confusion_matrix(y_true, y_pred)
+# #     tn, fp, fn, tp = cm.ravel()
+# #     return tn / (tn + fp)
+
+# f1 = f1_score(test_labels_classes, predictions_classes, average='weighted')
+# #  spec = specificity(test_labels_classes, predictions_classes)
+
+# # Imprimir os resultados
+# print("Resultados do modelo:")
+# print(f"Acurácia teste: {results_model1_test[1]}")
+# print(f"Acurácia treino: {results_model1_train[1]}")
+# print(f"Perda teste: {results_model1_test[0]}")
+# print(f"Perda treino: {results_model1_train[0]}")
+# print(f"Precisão: {precision}")
+# print(f"Revocação: {recall}")
+# print(f'Matriz de confusão: {cm}')
+# print(f'F1-Score: {f1}')
+# # print(f'Especificidade: {spec}')
