@@ -17,14 +17,14 @@ label_folder = "labels.csv"
 shape = 50
 
 # hiperparâmetros
-activation = 'relu'
-loss = 'categorical_crossentropy'
-optimizer = 'adam'
-epochs = 20
-batch_size=32
-num_filter = 32
-neuron = 32
-activation_dense = 'softmax'
+activation = 'selu' # melhor = selu, relu
+loss = 'categorical_crossentropy' # melhor = categorical_crossentropy, poisson
+optimizer = 'Lion' # melhor = Lion, adam
+epochs = 10 # menos complexo
+batch_size = 48 # melhor = entre 40 e 48 varios testes deu valores muito diferentes
+num_filter = 16 # melhor = 16, 32
+neuron = 64 # melhor = 64, 32, 128
+activation_dense = 'sigmoid' # melhor = sigmoid, softmax
 
 def load_data(folder, labels_file, target_size=(shape, shape)):
     # Carregar o arquivo CSV com as labels
@@ -120,14 +120,7 @@ recall = recall_score(test_labels_classes, predictions_classes, average = 'weigh
 # Matriz de Confusão
 cm = confusion_matrix(test_labels_classes, predictions_classes)
 
-# # Calcular F1-Score e Especificidade
-# def specificity(y_true, y_pred):
-#     cm = confusion_matrix(y_true, y_pred)
-#     tn, fp, fn, tp = cm.ravel()
-#     return tn / (tn + fp)
-
 f1 = f1_score(test_labels_classes, predictions_classes, average='weighted')
-#  spec = specificity(test_labels_classes, predictions_classes)
 
 # Imprimir os resultados
 print("Resultados do modelo:")
@@ -139,4 +132,3 @@ print(f"Precisão: {precision}")
 print(f"Revocação: {recall}")
 print(f'Matriz de confusão: {cm}')
 print(f'F1-Score: {f1}')
-# print(f'Especificidade: {spec}')
