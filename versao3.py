@@ -70,32 +70,32 @@ num_classes = len(label_mapping)
 train_labels = tf.keras.utils.to_categorical(train_labels, num_classes = num_classes)
 test_labels = tf.keras.utils.to_categorical(test_labels, num_classes = num_classes)
 
-def create_model(dropout1 = 0.25, dropout2 = 0.5):
+def create_model(dropout1 = 0.5):
 
     model = Sequential()
     model.add(Input(shape=(shape, shape, 3)))
-    model.add(Conv2D(32, kernel_size=(3, 3), activation='selu'))
-    model.add(Conv2D(32, (3, 3), activation='selu'))
+    model.add(Conv2D(16, kernel_size=(3, 3), activation='selu'))
+    model.add(Conv2D(16, (3, 3), activation='selu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(32, (3, 3), activation='selu'))
+    model.add(Conv2D(16, (3, 3), activation='selu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(32, (3, 3), activation='selu'))
+    model.add(Conv2D(16, (3, 3), activation='selu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(32, (3, 3), activation='selu'))
+    model.add(Conv2D(16, (3, 3), activation='selu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(dropout1))
+    model.add(Dropout(0.2))
     model.add(Flatten())
-    model.add(Dense(32, activation='selu'))
-    model.add(Dropout(dropout2))
+    model.add(Dense(16, activation='selu'))
+    model.add(Dropout(dropout1))
     model.add(Dense(num_classes, activation = 'sigmoid'))
-    model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics=['accuracy'])
+    model.compile(loss = 'categorical_crossentropy', optimizer = 'Lion', metrics=['accuracy'])
     return model
 
 model = KerasClassifier(model = create_model, verbose = 0)
 parametros = {
     'batch_size': [32],
     'model__dropout1': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-    'model__dropout2': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    # 'model__dropout2': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     'epochs': [5],
 }
     # 'model__activation': [
@@ -115,6 +115,10 @@ parametros = {
     #     'cosine_similarity', 'ctc', 'dice', 'hinge', 'huber', 'logcosh', 'poisson',
     #     'sparse_categorical_crossentropy', 'squared_hinge', 'tversky'
     # ]
+
+# Definir as callbacks
+# early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+# reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.001)
 
 grid = GridSearchCV(estimator = model, param_grid = parametros, n_jobs = 1, cv = 3)
 grid_result = grid.fit(train_images, train_labels)

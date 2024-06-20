@@ -14,14 +14,14 @@ from tensorflow.keras import Input
 # Dados
 data_folder = "images"
 label_folder = "labels.csv"
-shape = 50
+shape = 50 # melhor 50 obs: com 100 os resultados são melhores mas dá sobreajuste
 
 # hiperparâmetros
 activation = 'selu' # melhor = selu, relu
 loss = 'categorical_crossentropy' # melhor = categorical_crossentropy, poisson
 optimizer = 'Lion' # melhor = Lion, adam
 epochs = 10 # menos complexo
-batch_size = 48 # melhor = entre 40 e 48 varios testes deu valores muito diferentes
+batch_size = 32 # melhor 
 num_filter = 16 # melhor = 16, 32
 neuron = 64 # melhor = 64, 32, 128
 activation_dense = 'sigmoid' # melhor = sigmoid, softmax
@@ -91,10 +91,10 @@ model1.add(Conv2D(num_filter, (3, 3), activation = activation))
 model1.add(MaxPooling2D(pool_size=(2, 2)))
 model1.add(Conv2D(num_filter, (3, 3), activation = activation))
 model1.add(MaxPooling2D(pool_size=(2, 2)))
-model1.add(Dropout(0.25))
+model1.add(Dropout(0.2))
 model1.add(Flatten())
 model1.add(Dense(neuron, activation = activation))
-model1.add(Dropout(0.5))
+model1.add(Dropout(0.2))
 model1.add(Dense(num_classes, activation = activation_dense))
 
 # Compilar os modelos
