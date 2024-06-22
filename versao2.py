@@ -9,6 +9,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Input
+from sklearn.model_selection import StratifiedKFold
+from tensorflow.keras.utils import to_categorical
 
 
 # Dados
@@ -81,16 +83,16 @@ test_labels = tf.keras.utils.to_categorical(test_labels, num_classes=num_classes
 
 # Modelos 
 model1 = Sequential()
-model1.add(Input(shape=(shape, shape, 3)))
-model1.add(Conv2D(num_filter, kernel_size=(3, 3), activation = activation)) # 16
+model1.add(Input(shape = (shape, shape, 3)))
+model1.add(Conv2D(num_filter, (3, 3), activation = activation)) # 16
 model1.add(Conv2D(num_filter, (3, 3), activation = activation))
 model1.add(MaxPooling2D(pool_size=(2, 2)))
 model1.add(Conv2D(num_filter, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
+model1.add(MaxPooling2D(pool_size = (2, 2)))
 model1.add(Conv2D(num_filter, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
+model1.add(MaxPooling2D(pool_size = (2, 2)))
 model1.add(Conv2D(num_filter, (3, 3), activation = activation))
-model1.add(MaxPooling2D(pool_size=(2, 2)))
+model1.add(MaxPooling2D(pool_size = (2, 2)))
 model1.add(Dropout(0.2))
 model1.add(Flatten())
 model1.add(Dense(neuron, activation = activation))
@@ -120,6 +122,7 @@ recall = recall_score(test_labels_classes, predictions_classes, average = 'weigh
 # Matriz de Confusão
 cm = confusion_matrix(test_labels_classes, predictions_classes)
 
+# F1-Score
 f1 = f1_score(test_labels_classes, predictions_classes, average='weighted')
 
 # Imprimir os resultados
