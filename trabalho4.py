@@ -16,7 +16,7 @@ shape = 50 # melhor 50 obs: com 100 os resultados são melhores mas dá sobreaju
 
 # hiperparâmetros
 num_filter = 16 # melhor = 16, 32
-neuron = 128 # melhor = 64, 32, 128
+neuron = 128 # melhor = 128, 64, 32
 
 def load_data(folder, labels_file, target_size=(shape, shape)):
     # Carregar o arquivo CSV com as labels
@@ -76,7 +76,7 @@ def create_model():
     model.add(Conv2D(num_filter, (3, 3), activation='linear')) 
     model.add(Conv2D(num_filter, (3, 3), activation='tanh')) 
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(num_filter, (3, 3), activation='relu'))
+    model.add(Conv2D(num_filter, (3, 3), activation='leaky_relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(num_filter, (3, 3), activation='selu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -88,7 +88,7 @@ def create_model():
     model.add(Dropout(0.2))
     model.add(Dense(num_classes, activation='sigmoid'))
     
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer='Lion', metrics=['accuracy'])
     return model
 
 # Defina o modelo fora do loop
