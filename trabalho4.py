@@ -1,6 +1,9 @@
 import os
+from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.metrics import f1_score, precision_score, recall_score
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential
@@ -159,3 +162,39 @@ print(f"Perda média de teste: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
 print(f"Precisão média: {mean_precision:.4f} ± {std_precision:.4f}")
 print(f"Revocação média: {mean_recall:.4f} ± {std_recall:.4f}")
 print(f"F1-Score médio: {mean_f1:.4f} ± {std_f1:.4f}")
+
+def visualize_hiperplano(images, labels, technique, filename):
+    # Normalizar os dados
+    images_normalized = images / 255.0
+    images_reshaped = images_normalized.reshape(images_normalized.shape[0], -1)
+    
+    # Reduzir dimensionalidade com a técnica selecionada
+    if technique == 'pca':
+        reducer = PCA(n_components = 2, random_state = 42)
+        components = reducer.fit_transform(images_reshaped)
+        title = "Visualização das Classes no Hiperplano 2D com PCA"
+    elif technique == 'tsne':
+        reducer = TSNE(n_components=2, random_state=42)
+        components = reducer.fit_transform(images_reshaped)
+        title = "Visualização das Classes no Hiperplano 2D com t-SNE"
+    else:
+        raise ValueError("Técnica desconhecida. Escolha 'pca' ou 'tsne'.")
+    
+    np.savetxt(filename, components, delimiter=',')
+    
+    # Plotar os dados
+    plt.figure(figsize=(13, 8))
+    scatter = plt.scatter(components[:, 0], components[:, 1], c = labels, cmap = 'viridis', alpha = 0.7)
+    
+    # Adicionar legenda
+    plt.legend(handles = scatter.legend_elements()[0], labels = label_mapping.keys(), title="Classes")
+    plt.title(title)
+    plt.xlabel(f"Componente 1")
+    plt.ylabel(f"Componente 2")
+    plt.grid(True)
+    plt.show()
+
+# Visualizar os dados
+tecnica = "pca"
+filename = 'hiper.txt'
+visualize_hiperplano(images, labels, tecnica, filename)
