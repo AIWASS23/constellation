@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
-from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay, f1_score, precision_score, recall_score, confusion_matrix
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
@@ -88,6 +88,12 @@ def apply_dataset_filters(images, labels):
 
     return np.array(filtered_images)
 
+def plot_confusion_matrix(cm, label_mapping, model_name):
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_mapping.keys())
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title(f"Matriz de Confusão - {model_name}")
+    plt.show()
+
 # Carregar todas as imagens e labels
 images, labels, label_mapping = load_data(data_folder, label_folder)
 
@@ -108,6 +114,9 @@ val_losses = []
 precisions = []
 recalls = []
 f1_scores = []
+
+n_classes = 10
+confusion_matrices = []
 
 def create_model():
     model = Sequential()
@@ -173,7 +182,8 @@ for train_index, val_index in skf.split(images, labels):
     recalls.append(recall)
     f1_scores.append(f1)
 
-    cm = confusion_matrix(y_val, predictions_classes)
+    cm = confusion_matrix(y_val_classes, predictions_classes, labels=np.arange(n_classes))    
+    confusion_matrices.append(cm)
 
 # Calcular a média e o desvio padrão das métricas de treino e validação
 mean_train_accuracy = np.mean(train_accuracies)
@@ -200,3 +210,10 @@ print(f"Perda média de teste: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
 print(f"Precisão média: {mean_precision:.4f} ± {std_precision:.4f}")
 print(f"Revocação média: {mean_recall:.4f} ± {std_recall:.4f}")
 print(f"F1-Score médio: {mean_f1:.4f} ± {std_f1:.4f}")
+
+
+print("Matriz de confusão média:")
+mean_confusion_matrix = np.mean(confusion_matrices, axis=0)
+print(mean_confusion_matrix)
+
+plot_confusion_matrix(mean_confusion_matrix, label_mapping, "Mean Confusion Matrix")
