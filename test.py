@@ -1,7 +1,10 @@
 import os
+from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, f1_score, precision_score, recall_score, classification_report
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
@@ -16,7 +19,7 @@ shape = 50 # melhor 50 obs: com 100 os resultados são melhores mas dá sobreaju
 
 # hiperparâmetros
 num_filter = 16 # melhor = 16, 32
-neuron = 128 # melhor = 64, 32, 128
+neuron = 128 # melhor = 128, 64, 32
 
 def load_data(folder, labels_file, target_size=(shape, shape)):
     # Carregar o arquivo CSV com as labels
@@ -46,7 +49,6 @@ def load_data(folder, labels_file, target_size=(shape, shape)):
             label = labels_df[labels_df['filename'] == filename]['class'].values[0]
             label_idx = label_mapping[label]
             labels.append(label_idx)
-            # labels.append(label)
     
     # Converter para arrays numpy
     images = np.array(images)
@@ -57,9 +59,10 @@ def load_data(folder, labels_file, target_size=(shape, shape)):
 # Carregar todas as imagens e labels
 images, labels, label_mapping = load_data(data_folder, label_folder)
 num_classes = len(label_mapping)
+class_names = list(label_mapping.keys())
 
 n_splits = 10  # Número de folds para validação cruzada
-skf = StratifiedKFold(n_splits = n_splits, shuffle = True, random_state = 42)
+skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
 # Armazenar métricas para cada fold
 train_accuracies = []
@@ -70,6 +73,30 @@ val_losses = []
 precisions = []
 recalls = []
 f1_scores = []
+
+def create_model():
+    model = Sequential()
+    model.add(Input(shape=(shape, shape, 3)))
+    model.add(Conv2D(num_filter, (3, 3), activation='linear')) 
+    model.add(Conv2D(num_filter, (3, 3), activation='tanh')) 
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(num_filter, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(num_filter, (3, 3), activation='selu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(num_filter, (3, 3), activation='selu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.2))
+    model.add(Flatten())
+    model.add(Dense(neuron, activation='selu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(num_classes, activation='softmax'))
+    
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+
+# Inicializar o modelo fora do loop
+model = create_model()
 
 # Iterar sobre cada fold
 for train_index, val_index in skf.split(images, labels):
@@ -85,33 +112,12 @@ for train_index, val_index in skf.split(images, labels):
     y_train = to_categorical(y_train, num_classes=num_classes)
     y_val = to_categorical(y_val, num_classes=num_classes)
     
-    # Modelo 
-    model = Sequential()
-    model.add(Input(shape = (shape, shape, 3)))
-    model.add(Conv2D(num_filter, (3, 3), activation = 'linear')) 
-    model.add(Conv2D(num_filter, (3, 3), activation = 'tanh')) 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(num_filter, (3, 3), activation = 'leaky_relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(num_filter, (3, 3), activation = 'selu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(num_filter, (3, 3), activation = 'selu'))
-    model.add(MaxPooling2D(pool_size = (2, 2)))
-    model.add(Dropout(0.2))
-    model.add(Flatten())
-    model.add(Dense(neuron, activation = 'selu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(num_classes, activation = 'sigmoid'))
-    
-    # Compilar o modelo
-    model.compile(loss = 'categorical_crossentropy', optimizer = 'Lion', metrics = ['accuracy'])
-    
     # Treinar o modelo
-    history = model.fit(X_train, y_train, epochs = 10, batch_size = 32, validation_data = (X_val, y_val), verbose = 0)
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val), verbose=0)
     
     # Avaliar o modelo nos dados de treino e validação
-    train_results = model.evaluate(X_train, y_train, verbose = 0)
-    val_results = model.evaluate(X_val, y_val, verbose = 0)
+    train_results = model.evaluate(X_train, y_train, verbose=0)
+    val_results = model.evaluate(X_val, y_val, verbose=0)
     
     # Previsões nos dados de validação
     predictions = model.predict(X_val)
@@ -157,3 +163,67 @@ print(f"Perda média de teste: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
 print(f"Precisão média: {mean_precision:.4f} ± {std_precision:.4f}")
 print(f"Revocação média: {mean_recall:.4f} ± {std_recall:.4f}")
 print(f"F1-Score médio: {mean_f1:.4f} ± {std_f1:.4f}")
+
+# Plotar convergência da acurácia e da perda
+epochs = range(1, len(history.history['accuracy']) + 1)
+
+plt.figure(figsize=(12, 6))
+
+# Acurácia
+plt.subplot(1, 2, 1)
+plt.plot(epochs, history.history['accuracy'], 'g-', label='Treino Acurácia')  # Usar linha em vez de pontos
+plt.plot(epochs, history.history['val_accuracy'], 'b-', label='Validação Acurácia')  # Usar linha em vez de pontos
+plt.title('Treino e Validação Acurácia')
+plt.xlabel('Épocas')
+plt.ylabel('Acurácia')
+plt.legend()
+
+# Perda
+plt.subplot(1, 2, 2)
+plt.plot(epochs, history.history['loss'], 'r-', label='Treino Perda')  # Usar linha em vez de pontos
+plt.plot(epochs, history.history['val_loss'], 'b-', label='Validação Perda')  # Usar linha em vez de pontos
+plt.title('Treino e Validação Perda')
+plt.xlabel('Épocas')
+plt.ylabel('Perda')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+# Calcular precisão e recall por classe usando classification_report
+report = classification_report(y_val_classes, predictions_classes, target_names=class_names, labels=np.unique(y_val_classes), zero_division=1, output_dict=True)
+
+precision_per_class = [report[cls]['precision'] if cls in report else 0 for cls in class_names]
+recall_per_class = [report[cls]['recall'] if cls in report else 0 for cls in class_names]
+f1_score_per_class = [report[cls]['f1-score'] if cls in report else 0 for cls in class_names]
+
+
+# Plotar precisão por classe
+plt.figure(figsize=(10, 5))
+plt.bar(class_names, precision_per_class, color='blue', alpha=0.7)
+plt.xlabel('Classes')
+plt.ylabel('Precisão')
+plt.title('Precisão por Classe')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Plotar recall por classe
+plt.figure(figsize=(10, 5))
+plt.bar(class_names, recall_per_class, color='green', alpha=0.7)
+plt.xlabel('Classes')
+plt.ylabel('Revocação')
+plt.title('Revocação por Classe')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Plotar F1-score por classe
+plt.figure(figsize=(10, 5))
+plt.bar(class_names, f1_score_per_class, color='purple', alpha=0.7)
+plt.xlabel('Classes')
+plt.ylabel('F1-Score')
+plt.title('F1-Score por Classe')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
