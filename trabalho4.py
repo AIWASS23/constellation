@@ -1,7 +1,9 @@
 import os
 import pandas as pd
 import numpy as np
-from sklearn.metrics import f1_score, precision_score, recall_score
+import cv2
+from matplotlib import pyplot as plt
+from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
@@ -53,8 +55,45 @@ def load_data(folder, labels_file, target_size=(shape, shape)):
     
     return images, labels, label_mapping
 
+def perform_gaussian_filter_opencv(pixels_matrix):
+    image = np.array(pixels_matrix, dtype=np.uint8)
+    kernel_size = (5, 5)
+    sigmaX = 0
+    image_filtered = cv2.GaussianBlur(image, kernel_size, sigmaX)
+
+    return image_filtered
+
+def apply_top_hat_transformation(image, kernel_size=(15, 15)):
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
+    opened_image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
+    top_hat_image = cv2.subtract(image, opened_image)
+    
+    return top_hat_image
+
+def apply_dataset_filters(images, labels):
+    filtered_images = []
+
+    for (index, image) in enumerate(images):
+        # cv2.imshow(f"{index} - Imagem Original of constellation: {labels[index]}", np.array(image, dtype=np.uint8))
+
+        image = apply_top_hat_transformation(image)
+        image = perform_gaussian_filter_opencv(image)
+
+        # cv2.imshow(f"{index} - Imagem apos Top-Hat: {labels[index]}", np.array(image, dtype=np.uint8))
+
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+        filtered_images.append(image)
+
+    return np.array(filtered_images)
+
 # Carregar todas as imagens e labels
 images, labels, label_mapping = load_data(data_folder, label_folder)
+
+#Filter
+images = apply_dataset_filters(images, labels)
+
 num_classes = len(label_mapping)
 
 n_splits = 10  # Número de folds para validação cruzada
@@ -106,19 +145,19 @@ for train_index, val_index in skf.split(images, labels):
     
     # Converter labels para one-hot encoding
     y_train = to_categorical(y_train, num_classes=num_classes)
-    y_val = to_categorical(y_val, num_classes=num_classes)
+    y_val_categorical = to_categorical(y_val, num_classes=num_classes)
     
     # Treinar o modelo
-    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val), verbose=0)
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val_categorical), verbose=0)
     
     # Avaliar o modelo nos dados de treino e validação
     train_results = model.evaluate(X_train, y_train, verbose=0)
-    val_results = model.evaluate(X_val, y_val, verbose=0)
+    val_results = model.evaluate(X_val, y_val_categorical, verbose=0)
     
     # Previsões nos dados de validação
     predictions = model.predict(X_val)
     predictions_classes = np.argmax(predictions, axis=1)
-    y_val_classes = np.argmax(y_val, axis=1)
+    y_val_classes = np.argmax(y_val_categorical, axis=1)
     
     precision = precision_score(y_val_classes, predictions_classes, average='weighted', zero_division=1)
     recall = recall_score(y_val_classes, predictions_classes, average='weighted', zero_division=1)
@@ -133,6 +172,8 @@ for train_index, val_index in skf.split(images, labels):
     precisions.append(precision)
     recalls.append(recall)
     f1_scores.append(f1)
+
+    cm = confusion_matrix(y_val, predictions_classes)
 
 # Calcular a média e o desvio padrão das métricas de treino e validação
 mean_train_accuracy = np.mean(train_accuracies)
